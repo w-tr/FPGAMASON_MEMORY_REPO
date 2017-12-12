@@ -3,6 +3,11 @@ use	ieee.std_logic_1164.all;
 library uart_lib;
 library xil_defaultlib;
 use     xil_defaultlib.all;
+library sd_card;
+use	sd_card.all;
+library generics;
+Library UNISIM;
+use UNISIM.vcomponents.all;
 
 entity sd_card_project_top is
 	port
@@ -30,12 +35,20 @@ architecture struct of sd_card_project_top is
 
 signal locked : std_logic;
 	signal probe0 : std_logic_vector(31 downto 0);
+	signal probe1 : std_logic_vector(31 downto 0);
 
 	signal sd_dat : std_logic_vector(3 downto 0);
 	signal cmd    : std_logic;  -- MOSI (command)
 	signal sclk   : std_logic;  -- serial clock
 	signal cd     : std_logic;  -- card detect
 	signal wp     : std_logic;  -- write protect
+
+	signal mmc_cs        : std_logic;
+	signal mmc_miso      : std_logic;
+	signal mmc_mosi      : std_logic;
+	signal mmc_clock     : std_logic;
+	signal mmc_message       : std_logic_vector(15 downto 0);
+	signal mmc_status        : std_logic_vector(7 downto 0);
 
 	signal clr       : std_logic;                     -- global reset input
 	signal clk       : std_logic;                     -- global clock input
@@ -53,12 +66,53 @@ signal locked : std_logic;
 	signal baudClk   : std_logic;                     -- 
 	signal signal_a  : std_logic_vector(7 downto 0);
 	constant per_25m : time := 40 ns;
-
+signal clk_100m_int : std_logic;
 
 begin
-
+BUFG_inst : BUFG
+   port map (
+      O => clk_100m_int, -- 1-bit output: Clock output
+      I => clk_100m  -- 1-bit input: Clock input
+   );
 	clr <= not RESET_n;
 	signal_a <= x"be";
+	SD_DATA(3) <= mmc_cs;
+	 mmc_miso <= SD_DATA(0);
+	SD_CMD	   <= mmc_mosi;
+	SD_SCLK	   <= mmc_clock;
+
+	MMCController : entity sd_card.MMCController 
+	Port Map (
+			 clk           => clk_100m_int,
+			 mmc_cs        => mmc_cs,
+			 mmc_miso      => mmc_miso,
+			 mmc_mosi      => mmc_mosi,
+			 mmc_clock     => mmc_clock,
+			 message       => mmc_message,
+			 status        => mmc_status,
+			 LED_R	       => LED_R,
+			 reset         => clr
+			 --start_address => start_address,
+			 --fifo_full => fifo_full,
+			 --fifo_prog_full => fifo_prog_full,
+			 --fifo_din => fifo_din,
+			 --fifo_wr_en => fifo_wr_en,
+			 --fifo_wr_clk => fifo_wr_clk
+		 );
+
+	ila_mmc : entity xil_defaultlib.ila_mmc
+	port map(
+			clk => mmc_clock,
+			probe0 => probe1
+		);
+
+	probe1(0) <= mmc_cs;
+	probe1(1) <= mmc_miso;
+	probe1(2) <= mmc_mosi;
+	probe1(3) <= SD_CD;
+	probe1(7 downto 4) <= (others => '1') ;
+	probe1(15 downto 8) <= mmc_status;
+	probe1(31 downto 16) <= mmc_message;
 
 	u_uart : entity uart_lib.uart2BusTop
 	generic map ( AW => 16)
@@ -86,7 +140,7 @@ begin
 
 
 
-	ila : entity xil_defaultlib.ila_uart
+	ila_uart : entity xil_defaultlib.ila_uart
 	port map(
 			clk => clk_25m,
 			probe0 => probe0

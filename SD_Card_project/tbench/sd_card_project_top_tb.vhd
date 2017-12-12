@@ -47,7 +47,14 @@ architecture tb of sd_card_project_top_tb is
   constant NBITS_8      : integer := 7;
   signal recvData : std_logic_vector(7 downto 0);
   signal clr		 : std_logic;
-  
+  signal LED_R     : std_logic_vector(3 downto 0); 
+  signal LED_B     : std_logic_vector(3 downto 0);
+  signal LED_G     : std_logic_vector(3 downto 0);
+  signal SD_DATA   : std_logic_vector(3 downto 0);
+  signal SD_CMD	  :	std_logic;
+  signal SD_SCLK	  : std_logic;
+  signal SD_CD	  :	std_logic; -- Card Detected
+  signal SD_WP	  :	std_logic;
 begin
 
 	clr <= not RESET_n;
@@ -77,7 +84,15 @@ begin
 			UART_txd=> UART_txd,
 			BTN => BTN,
 			SWT => SWT,
-			LED => LED
+			LED => LED,
+		LED_R     => LED_R,
+		LED_B     => LED_B,
+		LED_G     => LED_G,
+		SD_DATA   => SD_DATA,
+		SD_CMD	  => SD_CMD,
+		SD_SCLK	  => SD_SCLK,
+		SD_CD	  => SD_CD,
+		SD_WP	  => SD_WP
 			--TLED => TLED
 		);
 
